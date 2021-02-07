@@ -94,19 +94,19 @@ data Result e a
 runParser :: Parser e a -> ByteString -> Result e a
 runParser (Parser f) b =
   unsafeDupablePerformIO $
-    unsafeUseAsCStringLen b $ \(Ptr buf, I# len) -> do
+    unsafeUseAsCStringLen b $ \(Ptr buf, I# len) ->
       let end = plusAddr# buf len
-      case f end buf of
-        Ok# a s ->
-          let offset = minusAddr# s buf
-           in pure (Ok a (BS.copy (BS.drop (I# offset) b))) -- always copies since the result is probably much smaller
-        Partial# p s -> do
-          pure
-            ( Partial $ \b' ->
-                let offset = minusAddr# s buf
-                    b0 = BS.drop (I# offset) b
-                 in runParser p (b0 <> b')
-            )
-        Err# e -> pure (Err e)
-        Fail# -> pure Fail
+       in case f end buf of
+            Ok# a s ->
+              let offset = minusAddr# s buf
+               in pure (Ok a (BS.copy (BS.drop (I# offset) b))) -- always copies since the result is probably much smaller
+            Partial# p s ->
+              pure
+                ( Partial $ \b' ->
+                    let offset = minusAddr# s buf
+                        b0 = BS.drop (I# offset) b
+                     in runParser p (b0 <> b')
+                )
+            Err# e -> pure (Err e)
+            Fail# -> pure Fail
 {-# NOINLINE runParser #-}
